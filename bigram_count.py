@@ -2,12 +2,12 @@ import pickle
 import sys
 import pymongo
 
-# This right now ONLY counts word totals, and saves them to a database.
-# Call with arguments 1 1.
+# Notes: 30 million lines, 2.2 million unique words
 
-# I think there's around 30 million lines.
-# I'm going to try running this in line sections
-# of 4 million, so it's divided into 10 parts.
+# Call with the first argument the separation, the second
+# argument 1000000. That value for the second argument just
+# splits the whole thing into three steps, so no single
+# step takes all of (my computer's) memory.
 
 ''' This program is used to pickle a dictionary of the frequencies
 of long-distance bigrams in the training set. It takes two arguments:
@@ -22,6 +22,14 @@ s = int(sys.argv[1])
 
 # The number of lines to process in each step (in each pickled dictionary)
 step_size = int(sys.argv[2])
+# Database stuff
+# Database!
+client = pymongo.MongoClient()
+db = client.main_db
+# Make the collection for this seperation 
+col_name = 'sep' + str(s) + '_collection'
+# Initialize collection
+collection = db[col_name]
 
 # At some point we need to count the total occurrences of all words.
 # We only do this if s==1 so as to not waste time repeating it for all
@@ -34,7 +42,6 @@ d = {} # This counts the bigrams
 
 print 'Opening file...'
 train = open('train_v2.txt')
-print 'Successfully opened file'
 print 'Reading lines...'
 line_num = 0;
 try:
@@ -50,54 +57,69 @@ try:
         line_num += 1
         if line_num%100000 == 0:
             print 'reading line ' + str(line_num)
-        ##if line_num % step_size == 0:
-        ##    print 'Saving progress as '
-        ##    filename = 's' + str(s) + '_lines' + str(((line_num-1)/step_size)*step_size+1) + '_' + str(line_num)
-        ##    pickle.dump(d,open(filename, "wb"))
-        ##    d.clear()
-        ##    print 'Done!'
+        if line_num % step_size == 0:
+            i = 0
+            print 'Entries to save: ' + str(len(d))
+            for bigram in d.keys():
+                if (i % 5000 == 0):
+                    print '    Entry number: ' + str(i)
+                i += 1;
+                (word1,word2) = bigram.split()
+                # The first argument to update means to update the
+                # document that matches {'word1':word1,...}
+                collection.update({'word1':word1,'word2':word2}, 
+                    # This increments the count of the bigram
+                    {'$inc':{'count':d[bigram]}},
+                     upsert=True) # 'upsert' means to make a new document
+                                  # and insert it, if one doesn't exist already.
+            d.clear() # Now clear the dictionary to free up memory for the next part.
+            print '    Done!'
         for i in range(len(word_list)-s):
             first_word = word_list[i]
             if s==1: # Increment total count of this word.
                 try: totals[first_word] += 1
                 except KeyError: totals[first_word] = 1
-            ##if not first_word in d: # Initialize if necessary
-            ##    d[first_word] = {}
-            ### Get the word at the correct separation from this word (the bigram)
-            ##second_word = word_list[i + s]
-            ##try:
-            ##    # increment count of][second_word] += 1 #this distance-pair happening
-            ##    d[first_word][second_word] += 1
-            ##except KeyError:
-            ##    d[first_word][second_word] = 1
+            second_word = word_list[i + s]
+            try:
+                # increment bigram count by one
+                d[first_word + ' ' + second_word] += 1
+            except KeyError:
+                d[first_word + ' ' + second_word] = 1
 except KeyboardInterrupt:
     pass
 
-client = pymongo.MongoClient()
-db = client.main_db
-totals_collection = db.totals
-
-print 'Total number of words:'
-print len(totals.keys())
 i = 0
-for w in totals.keys():
+print 'Entries to save: ' + str(len(d))
+for bigram in d.keys():
     if (i % 5000 == 0):
-        print 'Word number: ' + str(i)
+        print '    Entry number: ' + str(i)
     i += 1;
-    totals_collection.insert({'word':w, 'count':totals[w]})
+    (word1,word2) = bigram.split()
+    collection.update({'word1':word1,'word2':word2},
+        {'$inc':{'count':d[bigram]}},
+         #'$setOnInsert': {'count':d[bigram]}},
+         upsert=True)
+d.clear()
+print '    Done!'
+
+# The totals dictionary is small enough that it doesn't have to
+# be updated in steps.
+print 'Saving totals:'
+if s==1:
+    # Need to save the total counts into a collection
+    totals_collection = db.totals
+    
+    print 'Total number of words:'
+    print len(totals.keys())
+    i = 0
+    for w in totals.keys():
+        if (i % 5000 == 0):
+            print 'Word number: ' + str(i)
+        i += 1;
+        totals_collection.insert({'word':w, 'count':totals[w]})
 
 
+    
 
-
-
-
-
-##print 'Final save of bigram count...'
-##pickle.dump(d,open('s' + str(s) + '_lines' + str(step_size*(line_num/step_size)) + '_' + str(line_num) + '.d','wb'))
-##print 'Done!'
-##if s==1:
-##    print 'Saving total counts...'
-##    pickle.dump(totals,open('totals.d','wb'))
-##    print 'Done!'
 
 
