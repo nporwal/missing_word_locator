@@ -18,8 +18,7 @@ speeds up the process.  '''
 # other words between the end words in a bigram of separation s is s-1.
 s = int(sys.argv[1])
 
-# The percent of the training data to train on. Must be greater than 0 and
-# less than or equal to 100.
+# The percent of the training data to train on. >0 and <=1.
 percent = float(sys.argv[2])
 
 # Database stuff
