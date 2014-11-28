@@ -60,6 +60,8 @@ try:
         if line_num % step_size == 0:
             i = 0
             print 'Entries to save: ' + str(len(d))
+            print 'Making bulk operation:'
+            bulk = collection.initialize_unordered_bulk_op()
             for bigram in d.keys():
                 if (i % 5000 == 0):
                     print '    Entry number: ' + str(i)
@@ -67,11 +69,12 @@ try:
                 (word1,word2) = bigram.split()
                 # The first argument to update means to update the
                 # document that matches {'word1':word1,...}
-                collection.update({'word1':word1,'word2':word2}, 
+                bulk.find({'w1':word1,'w2':word2}).upsert().update( 
                     # This increments the count of the bigram
-                    {'$inc':{'count':d[bigram]}},
-                     upsert=True) # 'upsert' means to make a new document
-                                  # and insert it, if one doesn't exist already.
+                    {'$inc':{'c':d[bigram]}})
+            print 'Calling bulk.execute...'
+            bulk.execute()
+            print 'Done!'
             d.clear() # Now clear the dictionary to free up memory for the next part.
             print '    Done!'
         for i in range(len(word_list)-s):
