@@ -1,7 +1,4 @@
-"""
-Averaged perceptron classifier. Implementation geared for simplicity rather than
-efficiency.
-"""
+
 from collections import defaultdict
 import pickle
 import random
@@ -15,74 +12,51 @@ class AveragedPerceptron(object):
 
     def __init__(self):
         # Each feature gets its own weight vector, so weights is a dict-of-dicts
-        self.weights = {}
-        self.classes = set()
-        # The accumulated values, for the averaging. These will be keyed by
-        # feature/clas tuples
+        self.weights = dict()
+        self.averaged_weights = dict()
         self._totals = defaultdict(int)
-        # The last time the feature was changed, for the averaging. Also
-        # keyed by feature/clas tuples
-        # (tstamps is short for timestamps)
+        # The last time the feature was changed, for the averaging.
         self._tstamps = defaultdict(int)
         # Number of instances seen
         self.i = 0
 
-    def predict(self, features):
-        '''Dot-product the features and current weights and return the best label.'''
-        scores = defaultdict(float)
-        for feat, value in features.items():
-            if feat not in self.weights or value == 0:
-                continue
-            weights = self.weights[feat]
-            for label, weight in weights.items():
-                scores[label] += value * weight
-        # Do a secondary alphabetic sort, for stability
-        return max(self.classes, key=lambda label: (scores[label], label))
-
-    def update(self, truth, guess, features):
-        '''Update the feature weights.'''
-        def upd_feat(c, f, w, v):
-            param = (f, c)
-            self._totals[param] += (self.i - self._tstamps[param]) * w
-            self._tstamps[param] = self.i
-            self.weights[f][c] = w + v
-
+    def predict(self, feature):
         self.i += 1
-        if truth == guess:
+        return self.weights.get(feature, 0)
+
+    def update(self, label, old_weight, feature):
+        '''Update the feature weights.'''
+
+
+        if label * old_weight > 0:
             return None
-        for f in features:
-            weights = self.weights.setdefault(f, {})
-            upd_feat(truth, f, weights.get(truth, 0.0), 1.0)
-            upd_feat(guess, f, weights.get(guess, 0.0), -1.0)
+        self._totals[feature] = self._totals.get(feature, 0) + ((self.i - self._tstamps.get(feature, 0)) * old_weight)
+        self._tstamps[feature] = self.i
+        self.weights[feature] = old_weight + label
         return None
 
     def average_weights(self):
         '''Average weights from all iterations.'''
-        for feat, weights in self.weights.items():
-            new_feat_weights = {}
-            for clas, weight in weights.items():
-                param = (feat, clas)
-                total = self._totals[param]
-                total += (self.i - self._tstamps[param]) * weight
-                averaged = round(total / float(self.i), 3)
-                if averaged:
-                    new_feat_weights[clas] = averaged
-            self.weights[feat] = new_feat_weights
+        for feature, weight in self.weights.items():
+            total = self._totals[feature]
+            total += (self.i - self._tstamps[feature]) * weight
+            averaged = round(total / float(self.i), 3)
+            if averaged:
+                self.averaged_weights[feature] = averaged
         return None
 
     def save(self, path):
         '''Save the pickled model weights.'''
-        return pickle.dump(dict(self.weights), open(path, 'w'))
+        return pickle.dump(dict(self.averaged_weights), open(path, 'w'))
 
     def load(self, path):
         '''Load the pickled model weights.'''
         self.weights = pickle.load(open(path))
         return None
 
-
-def train(nr_iter, examples_path, offsets_path, examples_count):
-    '''Return an averaged perceptron model trained on examples in ''examples_path'' for
-    ``nr_iter`` iterations. In our case even though we're initially trying to do binary
+def train(examples_path):
+    '''Return an averaged perceptron model trained on examples in ''examples_path''
+     In our case even though we're initially trying to do binary
     prediction (whether, given a space in the line, it should contain a missing word)
     we could possibly try to predict if the space is in the line, and what brownian
     cluster it is if it's in the line
@@ -90,29 +64,25 @@ def train(nr_iter, examples_path, offsets_path, examples_count):
 
     #adjust this to handle the format we preprocess the examples in
     def parse(example):
-        pass
-        #return features, class_
+        #due to me fucking up and adding spaces, I have to join the two back together
+        feature_1, feature_2, label = example.strip('\n').split(' ')
+        feature = '%s%s' % (feature_1.strip('\''), feature_2.strip('\''))
+        label = int(label)
+        #and having the labels be binary oops -_-
+        if label == 0:
+            label = -1
+        return feature, label
+
 
     examples = open(examples_path)
-    line_offsets = pickle.load(open(offsets_path))
-
     model = AveragedPerceptron()
-    for i in range(nr_iter):
-        '''For averaged perceptron we want to shuffle the training examples each iteration.
-        However, since the examples will be in the gigs range of memory, we don't want to
-        shuffle everything in-memory. What we do instead, is shuffle the line-indices and
-        read at the respective location in the file (this is done using our pre-processed
-        line_offsets file, which tells us the offset of characters needed to get to each
-        line'''
-        random_indices = [i for i in range(0, examples_count)]
-        random.shuffle(random_indices)
-        for n in random_indices:
-            file.seek(line_offsets[n])
-            example = file.readline()
-            features, class_ = parse(example)
-            scores = model.predict(features)
-            guess, score = max(scores.items(), key=lambda i: i[1])
-            if guess != class_:
-                model.update(class_, guess, features)
+    for example in examples:
+        feature, label = parse(example)
+        prediction = model.predict(feature)
+        if prediction * label <= 0:
+            model.update(label, prediction, feature)
     model.average_weights()
+    model.save('ap_model')
     return model
+
+
