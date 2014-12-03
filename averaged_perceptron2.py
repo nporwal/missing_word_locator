@@ -22,18 +22,21 @@ class AveragedPerceptron(object):
         if features.get('-1', 0):
             prediction += self.weights['-1'].get(features['-1'], 0)
         if features.get('1', 0):
-            prediction += self.weights['1'].get(features['0'], 0)
+            prediction += self.weights['1'].get(features['1'], 0)
         return prediction
 
 
-    def update(self, label, features):
+    def update(self, label, features, positive_weight):
         '''Update the feature weights.'''
         def helper(n):
             if features.get(n, 0):
                 feature = features[n]
                 self._totals[n][feature] = self._totals[n].get(feature, 0) + ((self.i - self._tstamps[n].get(feature, 0)) * self.weights[n].get(feature, 0))
                 self._tstamps[n][feature] = self.i
-                self.weights[n][feature] = self.weights[n].get(feature, 0) + label
+                if label > 0:
+                    self.weights[n][feature] = self.weights[n].get(feature, 0) + positive_weight
+                else:
+                    self.weights[n][feature] = self.weights[n].get(feature, 0) + label
         helper('0')
         helper('-1')
         helper('1')
@@ -62,7 +65,7 @@ class AveragedPerceptron(object):
         self.weights = pickle.load(open(path))
         return None
 
-def train(examples_path, save_path):
+def train(examples_path, save_path, positive_weight):
     '''Return an averaged perceptron model trained on examples in ''examples_path''
      In our case even though we're initially trying to do binary
     prediction (whether, given a space in the line, it should contain a missing word)
@@ -105,29 +108,49 @@ def train(examples_path, save_path):
         features, label = parse(example)
         prediction = model.predict(features)
         if prediction * label <= 0:
-            model.update(label, features)
+            model.update(label, features, positive_weight)
     model.average_weights()
     model.save(save_path)
     return model
 
+def test_sentence(weights, sentence, brown_cluster):
+    def instance_predict(feature_set):
+        prediction = 0.0
+        prediction += weights['0'].get(feature_set['0'], 0.0)
+        print 'weight0 ' + str(weights['0'].get(feature_set['0'], 0.0))
+        if feature_set.get('-1', 0):
+            prediction += weights['-1'].get(feature_set['-1'], 0.0)
+            print 'weight-1 ' + str(weights['-1'].get(feature_set['-1'], 0.0))
+        if feature_set.get('1', 0):
+            prediction += weights['1'].get(feature_set['1'], 0.0)
+            print 'weight1 ' + str(weights['1'].get(feature_set['1'], 0.0))
 
-#this is wrong fix this
-def test_sentence(weights, sentence, clusters):
-    def feat_to_string(feature):
-        part1, part2 = feature
-        return ('(\'%s\',%s\')' % (part1, part2))
-    parts = sentence.split(' ')
-    sentence_weights = []
-    for i in range(0, len(parts)):
-            feature = ('missing', 'missing')
-            if i == 0:
-                feature = ('start', clusters.get(parts[i], 'missing'))
-                sentence_weights.append(weights.get(feat_to_string(feature), 0.0))
-            else:
-                feature = (clusters.get(parts[i-1], 'missing'), clusters.get(parts[i], 'missing'))
-                sentence_weights.append(weights.get(feat_to_string(feature), 0.0))
-    if parts:
-            last_feature = (clusters.get(parts[-1]), 'end')
-            sentence_weights.append(weights.get(feat_to_string(last_feature), 0.0))
+        return prediction
 
-    print sentence_weights
+    parts = sentence.strip('\n').split()
+    clustered_parts = [brown_cluster.get(part, 'missing') for part in parts]
+    clustered_parts.insert(0, 'start')
+    clustered_parts.append('end')
+    instances = []
+
+    #stops right before iterating over end
+    for i in range(0, (len(clustered_parts)-1)):
+        cluster_set = dict()
+        if clustered_parts[i] != 'start':
+            cluster_set['-1'] = clustered_parts[i-1]
+        cluster_set['0'] = clustered_parts[i]
+        cluster_set['1'] = clustered_parts[i+1]
+        if clustered_parts[i+1] != 'end':
+            cluster_set['2'] = clustered_parts[i+2]
+        print 'cluster set ' + str(cluster_set)
+
+        feature_set = dict()
+        feature_set['0'] = ('%s,%s' % (cluster_set['0'], cluster_set['1']))
+        if cluster_set.get('-1', 0):
+            feature_set['-1'] = ('%s,%s,%s' % (cluster_set['-1'], cluster_set['0'], cluster_set['1']))
+        if cluster_set.get('2', 0):
+            feature_set['1'] = ('%s,%s,%s' % (cluster_set['0'], cluster_set['1'], cluster_set['2']))
+        print 'feature set ' + str(feature_set)
+        instances.append(feature_set)
+
+    return [instance_predict(instance) for instance in instances]
