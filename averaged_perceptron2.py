@@ -36,7 +36,7 @@ class AveragedPerceptron(object):
                 self.weights[n][feature] = self.weights[n].get(feature, 0) + label
         helper('0')
         helper('-1')
-        helper('0')
+        helper('1')
         return None
 
     def average_weights(self):
@@ -50,7 +50,7 @@ class AveragedPerceptron(object):
                     self.averaged_weights[n][feature] = averaged
         helper('0')
         helper('-1')
-        helper('0')
+        helper('1')
         return None
 
     def save(self, path):
@@ -62,7 +62,7 @@ class AveragedPerceptron(object):
         self.weights = pickle.load(open(path))
         return None
 
-def train(examples_path):
+def train(examples_path, save_path):
     '''Return an averaged perceptron model trained on examples in ''examples_path''
      In our case even though we're initially trying to do binary
     prediction (whether, given a space in the line, it should contain a missing word)
@@ -78,24 +78,26 @@ def train(examples_path):
         ret = dict()
         if len(clusters) == 2:
             (cluster1, pos1), (cluster2, pos2) = clusters
-            ret['0'] = (cluster1, cluster2)
+            ret['0'] = '%s,%s' % (cluster1, cluster2)
         elif len(clusters) == 3:
             (cluster1, pos1), (cluster2, pos2), (cluster3, pos3) = clusters
             if int(pos1) == -1:
-                ret['0'] = (cluster2, cluster3)
-                ret['-1'] = (cluster1, cluster2, cluster3)
+                ret['0'] = '%s,%s' % (cluster2, cluster3)
+                ret['-1'] = '%s,%s,%s' % (cluster1, cluster2, cluster3)
             else:
             #elif int(pos1) == 0:
-                ret['0'] = (cluster1, cluster2)
-                ret['1'] = (cluster1, cluster2, cluster3)
+                ret['0'] = '%s,%s' % (cluster1, cluster2)
+                ret['1'] = '%s,%s,%s' % (cluster1, cluster2, cluster3)
 
         if len(clusters) == 4:
             (cluster1, pos1), (cluster2, pos2), (cluster3, pos3), (cluster4, pos4) = clusters
-            ret['0'] = (cluster2, cluster3)
-            ret['-1'] = (cluster1, cluster2, cluster3)
-            ret['1'] = (cluster2, cluster3, cluster4)
+            ret['0'] = '%s,%s' % (cluster2, cluster3)
+            ret['-1'] = '%s,%s,%s' % (cluster1, cluster2, cluster3)
+            ret['1'] = '%s,%s,%s' % (cluster2, cluster3, cluster4)
 
-        return ret
+        if label == 0:
+            label = -1
+        return ret, label
 
     examples = open(examples_path)
     model = AveragedPerceptron()
@@ -105,7 +107,7 @@ def train(examples_path):
         if prediction * label <= 0:
             model.update(label, features)
     model.average_weights()
-    model.save('ap_model')
+    model.save(save_path)
     return model
 
 
