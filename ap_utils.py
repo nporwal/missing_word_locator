@@ -69,4 +69,38 @@ def preprocess(read_path, write_path, cluster_path):
             writeable.write('%s %i\n' % (tup2str(last_feature), int(last_label)))
 
 
+def preprocess2(read_path, write_path, cluster_path):
+
+    brown_cluster = pickle.load(open(cluster_path))
+    writeable = open(write_path, 'w+')
+    for line in open(read_path):
+        parts = line.strip('\n').split()
+        clustered_parts = [brown_cluster.get(part, 'missing') for part in parts]
+
+        #randomly remove one cluster
+        #while keeping track of its original index
+        rand_index = random.randint(0, (len(clustered_parts) - 1))
+        clustered_parts.pop(rand_index)
+        clustered_parts.insert(0, 'start')
+        clustered_parts.append('end')
+
+
+
+        #stops right before iterating over end
+        for i in range(0, (len(clustered_parts)-1)):
+            features = []
+            label =  i == rand_index
+            if clustered_parts[i] != 'start':
+                features.append((clustered_parts[i-1], -1))
+            features.append((clustered_parts[i], 0))
+            features.append((clustered_parts[i+1], 1))
+            if clustered_parts[i+1] != 'end':
+                features.append((clustered_parts[i+2], 2))
+
+            for feature, pos in features:
+                writeable.write('%s,%i ' % (feature, pos))
+            writeable.write('%i\n' % int(label))
+
+
+
 
