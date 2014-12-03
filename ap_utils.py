@@ -28,6 +28,11 @@ the training data, ie each sentence of n words will be processed into n-1 negati
 example.
  '''
 def preprocess(read_path, write_path, cluster_path):
+
+    def tup2str(tuple):
+        part1, part2 = tuple
+        return '%s,%s' % (part1, part2)
+
     brown_cluster = pickle.load(open(cluster_path))
     writeable = open(write_path, 'w+')
     for line in open(read_path):
@@ -49,7 +54,7 @@ def preprocess(read_path, write_path, cluster_path):
             else:
                 feature = (brown_cluster.get(parts[i-1], 'missing'), brown_cluster.get(parts[i], 'missing'))
 
-            writeable.write('%s %i\n' % (str(feature), int(label)))
+            writeable.write('%s %i\n' % (tup2str(feature), int(label)))
 
         #handle the very last space
         #it should be the length of the current parts
@@ -57,11 +62,11 @@ def preprocess(read_path, write_path, cluster_path):
         if parts:
             last_label = (len(parts) == rand_index)
             last_feature = (brown_cluster.get(parts[-1]), 'end')
-            writeable.write('%s %i\n' % (str(last_feature), int(last_label)))
+            writeable.write('%s %i\n' % (tup2str(last_feature), int(last_label)))
         else:
             last_label = True
             last_feature = ('start', 'end')
-            writeable.write('%s %i\n' % (str(last_feature), int(last_label)))
+            writeable.write('%s %i\n' % (tup2str(last_feature), int(last_label)))
 
 
 

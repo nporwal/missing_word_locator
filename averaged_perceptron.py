@@ -5,11 +5,6 @@ import random
 
 class AveragedPerceptron(object):
 
-    '''An averaged perceptron, as implemented by Matthew Honnibal.
-    See more implementation details here:
-        http://honnibal.wordpress.com/2013/09/11/a-good-part-of-speechpos-tagger-in-about-200-lines-of-python/
-    '''
-
     def __init__(self):
         # Each feature gets its own weight vector, so weights is a dict-of-dicts
         self.weights = dict()
@@ -85,4 +80,22 @@ def train(examples_path):
     model.save('ap_model')
     return model
 
+def test_sentence(weights, sentence, clusters):
+    def feat_to_string(feature):
+        part1, part2 = feature
+        return ('(\'%s\',%s\')' % (part1, part2))
+    parts = sentence.split(' ')
+    sentence_weights = []
+    for i in range(0, len(parts)):
+            feature = ('missing', 'missing')
+            if i == 0:
+                feature = ('start', clusters.get(parts[i], 'missing'))
+                sentence_weights.append(weights.get(feat_to_string(feature), 0.0))
+            else:
+                feature = (clusters.get(parts[i-1], 'missing'), clusters.get(parts[i], 'missing'))
+                sentence_weights.append(weights.get(feat_to_string(feature), 0.0))
+    if parts:
+            last_feature = (clusters.get(parts[-1]), 'end')
+            sentence_weights.append(weights.get(feat_to_string(last_feature), 0.0))
 
+    print sentence_weights
