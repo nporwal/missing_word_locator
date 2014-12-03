@@ -2,6 +2,7 @@ __author__ = 'Jeff'
 
 from collections import defaultdict
 import pickle
+import random
 
 class AveragedPerceptron(object):
 
@@ -113,7 +114,7 @@ def train(examples_path, save_path, positive_weight):
     model.save(save_path)
     return model
 
-def test_sentence(weights, sentence, brown_cluster):
+def test_helper(weights, parts, brown_cluster):
     def instance_predict(feature_set):
         prediction = 0.0
         prediction += weights['0'].get(feature_set['0'], 0.0)
@@ -127,7 +128,7 @@ def test_sentence(weights, sentence, brown_cluster):
 
         return prediction
 
-    parts = sentence.strip('\n').split()
+
     clustered_parts = [brown_cluster.get(part, 'missing') for part in parts]
     clustered_parts.insert(0, 'start')
     clustered_parts.append('end')
@@ -154,3 +155,18 @@ def test_sentence(weights, sentence, brown_cluster):
         instances.append(feature_set)
 
     return [instance_predict(instance) for instance in instances]
+
+def test(test_inst_path, weights_path, clusters_path):
+    sentences = open(test_inst_path)
+    weights = pickle.load(open(weights_path))
+    clusters = pickle.load(open(clusters_path))
+    correct = 0
+    total = 0
+    for sentence in sentences:
+        parts = sentence.strip('\n').split()
+        #randint is stupid since it's inclusive on both ends
+        rand_index = random.randint(0, (len(parts) - 1))
+        parts.pop(rand_index)
+        predictions = test_helper(weights, parts, clusters)
+        max([(i, element) for (i, element) in enumerate(predictions)], key=lambda (i, element): element)
+
