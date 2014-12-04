@@ -166,26 +166,26 @@ def test(test_inst_path, weights_path, clusters_path, results_path):
     for sentence in sentences:
         parts = sentence.strip('\n').split()
         rand_index = -1
-        #if total % 2 == 0:
+        if total % 2 == 0:
             #randint is stupid since it's inclusive on both ends
-        rand_index = random.randint(0, (len(parts) - 1))
-        parts.pop(rand_index)
+            rand_index = random.randint(0, (len(parts) - 1))
+            parts.pop(rand_index)
 
         predictions = test_helper(weights, parts, clusters)
         i, element = max([(i, element) for (i, element) in enumerate(predictions)], key=lambda (i, element): element)
-        #if element > 0:
-        if i == rand_index:
-            correct += 1
-        #else:
-            #if rand_index == -1:
-                #correct += 1
+        if element > 0:
+            if i == rand_index:
+                correct += 1
+        else:
+            if rand_index == -1:
+                correct += 1
 
 
-        prediction_str = ','.join([str(prediction) for prediction in predictions])
-        best_guess_str = '%i:%i' % (i, element)
-        rand_index_str = str(rand_index)
+        #prediction_str = ','.join([str(prediction) for prediction in predictions])
+        #best_guess_str = '%i:%i' % (i, element)
+        #rand_index_str = str(rand_index)
 
-        results.write('%s %s %s\n' % (prediction_str, best_guess_str, rand_index_str))
+        #results.write('%s %s %s\n' % (prediction_str, best_guess_str, rand_index_str))
 
         total += 1
 

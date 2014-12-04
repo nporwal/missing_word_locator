@@ -75,7 +75,10 @@ def train(examples_path, save_path, positive_weight):
         if len(clusters) == 4:
             (cluster1, pos1), (cluster2, pos2), (cluster3, pos3), (cluster4, pos4) = clusters
             ret = '%s,%s' % (cluster2, cluster3)
-        return ret
+
+        if label == 0:
+            label = -1
+        return ret, label
 
 
     examples = open(examples_path)
@@ -119,10 +122,10 @@ def test(test_inst_path, weights_path, clusters_path, results_path):
     for sentence in sentences:
         parts = sentence.strip('\n').split()
         rand_index = -1
-        #if total % 2 == 0:
+        if total % 2 == 0:
             #randint is stupid since it's inclusive on both ends
-        rand_index = random.randint(0, (len(parts) - 1))
-        parts.pop(rand_index)
+            rand_index = random.randint(0, (len(parts) - 1))
+            parts.pop(rand_index)
 
         predictions = test_helper(weights, parts, clusters)
         i, element = max([(i, element) for (i, element) in enumerate(predictions)], key=lambda (i, element): element)
@@ -134,11 +137,11 @@ def test(test_inst_path, weights_path, clusters_path, results_path):
                 correct += 1
 
 
-        prediction_str = ','.join([str(prediction) for prediction in predictions])
-        best_guess_str = '%i:%i' % (i, element)
-        rand_index_str = str(rand_index)
+        #prediction_str = ','.join([str(prediction) for prediction in predictions])
+        #best_guess_str = '%i:%i' % (i, element)
+        #rand_index_str = str(rand_index)
 
-        results.write('%s %s %s\n' % (prediction_str, best_guess_str, rand_index_str))
+        #results.write('%s %s %s\n' % (prediction_str, best_guess_str, rand_index_str))
 
         total += 1
 
