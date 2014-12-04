@@ -118,13 +118,13 @@ def test_helper(weights, parts, brown_cluster):
     def instance_predict(feature_set):
         prediction = 0.0
         prediction += weights['0'].get(feature_set['0'], 0.0)
-        print 'weight0 ' + str(weights['0'].get(feature_set['0'], 0.0))
+        #print 'weight0 ' + str(weights['0'].get(feature_set['0'], 0.0))
         if feature_set.get('-1', 0):
             prediction += weights['-1'].get(feature_set['-1'], 0.0)
-            print 'weight-1 ' + str(weights['-1'].get(feature_set['-1'], 0.0))
+            #print 'weight-1 ' + str(weights['-1'].get(feature_set['-1'], 0.0))
         if feature_set.get('1', 0):
             prediction += weights['1'].get(feature_set['1'], 0.0)
-            print 'weight1 ' + str(weights['1'].get(feature_set['1'], 0.0))
+            #print 'weight1 ' + str(weights['1'].get(feature_set['1'], 0.0))
 
         return prediction
 
@@ -143,7 +143,7 @@ def test_helper(weights, parts, brown_cluster):
         cluster_set['1'] = clustered_parts[i+1]
         if clustered_parts[i+1] != 'end':
             cluster_set['2'] = clustered_parts[i+2]
-        print 'cluster set ' + str(cluster_set)
+        #print 'cluster set ' + str(cluster_set)
 
         feature_set = dict()
         feature_set['0'] = ('%s,%s' % (cluster_set['0'], cluster_set['1']))
@@ -151,22 +151,43 @@ def test_helper(weights, parts, brown_cluster):
             feature_set['-1'] = ('%s,%s,%s' % (cluster_set['-1'], cluster_set['0'], cluster_set['1']))
         if cluster_set.get('2', 0):
             feature_set['1'] = ('%s,%s,%s' % (cluster_set['0'], cluster_set['1'], cluster_set['2']))
-        print 'feature set ' + str(feature_set)
+        #print 'feature set ' + str(feature_set)
         instances.append(feature_set)
 
     return [instance_predict(instance) for instance in instances]
 
-def test(test_inst_path, weights_path, clusters_path):
+def test(test_inst_path, weights_path, clusters_path, results_path):
     sentences = open(test_inst_path)
+    results = open(results_path, 'w')
     weights = pickle.load(open(weights_path))
     clusters = pickle.load(open(clusters_path))
     correct = 0
     total = 0
     for sentence in sentences:
         parts = sentence.strip('\n').split()
-        #randint is stupid since it's inclusive on both ends
+        rand_index = -1
+        #if total % 2 == 0:
+            #randint is stupid since it's inclusive on both ends
         rand_index = random.randint(0, (len(parts) - 1))
         parts.pop(rand_index)
+
         predictions = test_helper(weights, parts, clusters)
-        max([(i, element) for (i, element) in enumerate(predictions)], key=lambda (i, element): element)
+        i, element = max([(i, element) for (i, element) in enumerate(predictions)], key=lambda (i, element): element)
+        #if element > 0:
+        if i == rand_index:
+            correct += 1
+        #else:
+            #if rand_index == -1:
+                #correct += 1
+
+
+        prediction_str = ','.join([str(prediction) for prediction in predictions])
+        best_guess_str = '%i:%i' % (i, element)
+        rand_index_str = str(rand_index)
+
+        results.write('%s %s %s\n' % (prediction_str, best_guess_str, rand_index_str))
+
+        total += 1
+
+    return ('Correct:%i Total:%i' % (correct, total))
 

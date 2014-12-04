@@ -102,5 +102,16 @@ def preprocess2(read_path, write_path, cluster_path):
             writeable.write('%i\n' % int(label))
 
 
+def split(read_path, training_path, test_path):
+    training = open(training_path, 'w')
+    test = open(test_path, 'w')
+    i = 0
+    for line in open(read_path):
+        if i < 28000000:
+            training.write(line)
+        else:
+            test.write(line)
+
+
 
 
