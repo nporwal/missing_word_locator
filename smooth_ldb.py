@@ -1,7 +1,9 @@
 import sys
 import shelve
+import cPickle
 
 #note: ldb stands for long-distance-bigram
+# number of forgotten sep=3: 73241462
 
 # Total number of lines in the file. Might be off by one or two but who cares.
 NUM_LINES = 30301027
@@ -81,11 +83,9 @@ for l in train:
 print 'Done counting!'
 # forget the one-shot dict one last time...
 one_dict.clear()
-print 'Making shelf...'
-ldb_shelf = shelve.open('s{}_shelf.d'.format(str(s)))
-ldb_shelf.clear()
-# 'update' just copies a dictionary into a shelf. 
-ldb_shelf.update(save_dict)
+save_dict['_forgotten_'] = total_forgotten
+picklefile = open("s{}_pickle.d".format(str(s)), "w")
+cPickle.dump(save_dict,picklefile)
 
 if s==1:
     print 'Saving totals:'
