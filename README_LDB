@@ -1,0 +1,29 @@
+LDB training and testing process:
+
+'smooth_ldb.py' is the file that counts the number of long-distance-bigrams in the 
+training set (which is the first 20million lines of the training data downloaded from
+kaggle, in a file named 'train20mil.txt') and saves that count to a pickled dictionary.
+It takes one argument, which is the distance of the bigrams to train on (it trains
+on one distance bigram at a time). The dictionary of counts is saved to a file
+"sX_pickle.d" where X is the distance of the bigrams being counted.
+
+After running smooth_ldb.py on to create the pickled dictionaries of the counts of the
+desired distances up to the max depth desired to test on, there are two files that 
+contain functions to calculate the probabilities necessary for the generative model
+of language. ldb_probs.py calculates the probabilities based on our better approximation
+(the product of probabilities for the ldb's at all depths), and ldb_probs_sum.py 
+calculates the probabilites based on the approximation from the literature, which we 
+found to be a failure for this problem (a weighted average of the probabilites). 
+
+There are two test files, for the respective probability files above. test.py uses
+the weighted average approximation and takes two arguments, the number of lines to test
+on, and the verbosity. xtest.py tests on the product probability approximation, 
+and takes the same two arguments. They also require a file of testing sentences, which 
+are the remainder of the training sentences not in the training set, in a file called
+'rest_of_train.txt'
+
+Also included are the files ngram_smooth.py, ngram_probs.py, and ntest.py, which perform
+the analagous functions for 3-grams (we only made sure they worked for 3grams, 4-grams and
+higher were too memory intensive). We did not mention this in our written report, and did
+not extensively test 3-grams, but our few tests indicated an accuracy of around 25%, better
+than 2-grams but not as good as our best ldb results.
